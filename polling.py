@@ -39,7 +39,7 @@ def location_to_world_and_instance(location_id:str):
         instance_id.
 
     """
-    locations = location_id.split(":")
+    locations = location_id.split(":",1)
     return locations[0], locations[1]
 
 def json_serial(obj):
@@ -158,24 +158,27 @@ with vrchatapi.ApiClient(configuration) as api_client:
         with driver.session() as session:
             session.run(n_query)
 
-
-        if current_user.presence.instance != "offline":
-            instance = ins.get_instance(world_id=current_user.presence.world, instance_id=current_user.presence.instance)
-    
-            instance = instance
-            world=instance.world
-            with driver.session() as session:
-                n_query = 'MERGE (me:USER {id:"'+current_user.id+'"})ON CREATE SET me.name="'+current_user.display_name+'"'\
-                        'MERGE (in:INSTANCE {id:"'+instance.id+'"})ON CREATE SET in.create=datetime()'\
-                        'MERGE (w:WORLD {id:"'+world.id+'"})ON CREATE SET w.name="'+world.name+'"'
-                session.run(n_query)
-
-                r_query = 'MATCH (me:USER) WHERE me.id="'+current_user.id+'"'\
-                        'MATCH (instance:INSTANCE) WHERE instance.id="'+instance.id+'"'\
-                        'MATCH (w:WORLD) WHERE w.id="'+world.id+'"'\
-                        "MERGE (me)-[r:JOIN]->(instance)<-[:INSTANCES]-(w)ON CREATE SET r.fast_time=datetime(), r.last_time=datetime() ON MATCH SET r.last_time=datetime()"
-                session.run(r_query)
+        try:
+            if current_user.presence.instance != "offline":
+                instance = ins.get_instance(world_id=current_user.presence.world, instance_id=current_user.presence.instance)
         
+                instance = instance
+                world=instance.world
+                with driver.session() as session:
+                    n_query = 'MERGE (me:USER {id:"'+current_user.id+'"})ON CREATE SET me.name="'+current_user.display_name+'"'\
+                            'MERGE (in:INSTANCE {id:"'+instance.id+'"})ON CREATE SET in.create_at=datetime()'\
+                            'MERGE (w:WORLD {id:"'+world.id+'"})ON CREATE SET w.name="'+world.name+'", w.image_url="'+world.image_url+'"'
+                    session.run(n_query)
+
+                    r_query = 'MATCH (me:USER) WHERE me.id="'+current_user.id+'"'\
+                            'MATCH (instance:INSTANCE) WHERE instance.id="'+instance.id+'"'\
+                            'MATCH (w:WORLD) WHERE w.id="'+world.id+'"'\
+                            "MERGE (me)-[r:JOIN]->(instance) ON CREATE SET r.fast_time=datetime(), r.last_time=datetime() ON MATCH SET r.last_time=datetime()"\
+                            "MERGE (instance)<-[:INSTANCES{id:'"+instance.id+"'}]-(w)"\
+                            
+                    session.run(r_query)
+        except:
+            pass
         friends = FriendsApi(api_client)
         for friend in friends.get_friends():
             print(friend.display_name)
@@ -189,22 +192,22 @@ with vrchatapi.ApiClient(configuration) as api_client:
             world=instance.world
             with driver.session() as session:
                 n_query = 'MERGE (friend:USER {id:"'+friend.id+'"})ON CREATE SET friend.name="'+friend.display_name+'"'\
-                        'MERGE (in:INSTANCE {id:"'+instance.id+'"})ON CREATE SET in.create=datetime()'\
-                        'MERGE (w:WORLD {id:"'+world.id+'"})ON CREATE SET w.name="'+world.name+'"'
+                        'MERGE (in:INSTANCE {id:"'+instance.id+'"})ON CREATE SET in.create_at=datetime()'\
+                        'MERGE (w:WORLD {id:"'+world.id+'"})ON CREATE SET w.name="'+world.name+'", w.image_url="'+world.image_url+'"'
                 
                 
                 r_query = 'MATCH (friend:USER) WHERE friend.id="'+friend.id+'"'\
                         'MATCH (instance:INSTANCE) WHERE instance.id="'+instance.id+'"'\
                         'MATCH (w:WORLD) WHERE w.id="'+world.id+'"'\
                         'MATCH (me:USER) WHERE me.id="'+current_user.id+'"'\
-                        "MERGE (instance)<-[r1:INSTANCES]-(w)"\
+                        "MERGE (instance)<-[r1:INSTANCES{id:'"+instance.id+"'}]-(w)"\
                         "MERGE (friend)-[r:JOIN]->(instance)ON CREATE SET r.fast_time=datetime(), r.last_time=datetime() ON MATCH SET r.last_time=datetime()"\
                         "MERGE (friend)-[f1:FRIEND]->(me)-[f2:FRIEND]->(friend) ON CREATE SET f1.from=datetime(), f2.from=datetime()"
                 session.run(n_query)
                 print(r_query)
                 session.run(r_query)
-                    
+        
         print("executed:",datetime.now())
-        time.sleep(60*3)
+        time.sleep(60*2)
         
         
