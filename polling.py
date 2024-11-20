@@ -185,8 +185,9 @@ with vrchatapi.ApiClient(configuration) as api_client:
             if friend.location in ["private", "offline"]:
                 continue
             print(friend.location, type(friend.location))
-            if friend.location=="traveling":
+            if friend.location=="traveling" or friend.location.find(":")==-1:
                 continue
+            aa = friend.location
             world_id, instance_id = location_to_world_and_instance(friend.location)
             instance = ins.get_instance(world_id=world_id, instance_id=instance_id)
             world=instance.world
@@ -206,7 +207,6 @@ with vrchatapi.ApiClient(configuration) as api_client:
                 session.run(n_query)
                 print(r_query)
                 session.run(r_query)
-        
         print("executed:",datetime.now())
         time.sleep(60*2)
         
