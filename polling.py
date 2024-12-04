@@ -21,7 +21,7 @@ import json
 from datetime import date, datetime
 
 # neo4j serverに接続するdriverの設定
-driver = GraphDatabase.driver('neo4j://localhost:7687', auth=('neo4j', 'hogehoge123'))
+driver = GraphDatabase.driver('neo4j://192.168.20.200:7687', auth=('neo4j', 'hogehoge123'))
 
 def location_to_world_and_instance(location_id:str):
     """locationをworld_idとinstance_idに分離
@@ -187,27 +187,32 @@ with vrchatapi.ApiClient(configuration) as api_client:
             print(friend.location, type(friend.location))
             if friend.location=="traveling" or friend.location.find(":")==-1:
                 continue
-            aa = friend.location
-            world_id, instance_id = location_to_world_and_instance(friend.location)
-            instance = ins.get_instance(world_id=world_id, instance_id=instance_id)
-            world=instance.world
-            with driver.session() as session:
-                n_query = 'MERGE (friend:USER {id:"'+friend.id+'"})ON CREATE SET friend.name="'+friend.display_name+'"'\
-                        'MERGE (in:INSTANCE {id:"'+instance.id+'"})ON CREATE SET in.create_at=datetime()'\
-                        'MERGE (w:WORLD {id:"'+world.id+'"})ON CREATE SET w.name="'+world.name+'", w.image_url="'+world.image_url+'"'
-                
-                
-                r_query = 'MATCH (friend:USER) WHERE friend.id="'+friend.id+'"'\
-                        'MATCH (instance:INSTANCE) WHERE instance.id="'+instance.id+'"'\
-                        'MATCH (w:WORLD) WHERE w.id="'+world.id+'"'\
-                        'MATCH (me:USER) WHERE me.id="'+current_user.id+'"'\
-                        "MERGE (instance)<-[r1:INSTANCES{id:'"+instance.id+"'}]-(w)"\
-                        "MERGE (friend)-[r:JOIN]->(instance)ON CREATE SET r.fast_time=datetime(), r.last_time=datetime() ON MATCH SET r.last_time=datetime()"\
-                        "MERGE (friend)-[f1:FRIEND]->(me)-[f2:FRIEND]->(friend) ON CREATE SET f1.from=datetime(), f2.from=datetime()"
-                session.run(n_query)
-                print(r_query)
-                session.run(r_query)
+            
+            try:
+                world_id, instance_id = location_to_world_and_instance(friend.location)
+                instance = ins.get_instance(world_id=world_id, instance_id=instance_id)
+                world=instance.world
+                with driver.session() as session:
+                    n_query = 'MERGE (friend:USER {id:"'+friend.id+'"})ON CREATE SET friend.name="'+friend.display_name+'"'\
+                            'MERGE (in:INSTANCE {id:"'+instance.id+'"})ON CREATE SET in.create_at=datetime()'\
+                            'MERGE (w:WORLD {id:"'+world.id+'"})ON CREATE SET w.name="'+world.name+'", w.image_url="'+world.image_url+'"'
+                    
+                    
+                    r_query = 'MATCH (friend:USER) WHERE friend.id="'+friend.id+'"'\
+                            'MATCH (instance:INSTANCE) WHERE instance.id="'+instance.id+'"'\
+                            'MATCH (w:WORLD) WHERE w.id="'+world.id+'"'\
+                            'MATCH (me:USER) WHERE me.id="'+current_user.id+'"'\
+                            "MERGE (instance)<-[r1:INSTANCES{id:'"+instance.id+"'}]-(w)"\
+                            "MERGE (friend)-[r:JOIN]->(instance)ON CREATE SET r.fast_time=datetime(), r.last_time=datetime() ON MATCH SET r.last_time=datetime()"\
+                            "MERGE (friend)-[f1:FRIEND]->(me)-[f2:FRIEND]->(friend) ON CREATE SET f1.from=datetime(), f2.from=datetime()"
+                    session.run(n_query)
+                    print(r_query)
+                    session.run(r_query)
+            except:
+                pass
+        with driver.session() as session:
+            pass
         print("executed:",datetime.now())
-        time.sleep(60*2)
+        time.sleep(60*1)
         
         
